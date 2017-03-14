@@ -1,0 +1,41 @@
+java:
+  patchconfig:
+    laft: \\172.21.190.11\home\laft\Product\8770\integration
+    patchlocation: d:\patches\
+    filelife: False
+  nms8770-client:
+    fileformat: (nms8770-client-8770).(\d{1}.\d{1}.\d{2}.\d{2})(.jar)
+    source: 8770-appl\client\target
+    deploy: nmc_home\Client\bin\
+    pre-action: stop svc_mgr
+    post-action: start svc_mgr
+    dependency:
+      - axis2.war
+      - infra.jar 
+  nms8770-common:
+    fileformat: nms8770-common-8770.(\d{1}.\d{1}.\d{2}.\d{2}).jar
+    source: 8770-appl\common\target
+    deploy: nmc_home\Client\bin\
+  nms8770-ws-common: 
+    fileformat: nms8770-ws-common-8770.(\d{1}.\d{1}.\d{2}.\d{2}).jar
+    source: 8770-appl\server\common\target
+    deploy:
+      - nmc_home\lib
+      - nmc_home\Client\bin
+  axis2.war:
+    fileformat: axis2.war
+    source: 8770-appl\common\target
+    deploy: nmc_home\wildfly\standalone\deployments\
+    pre-action: stop svc_mgr
+  nms8770-web.war:
+    fileformat: /$\d.war
+    deploy: nmc_home\wildfly\standalone\deployments\
+    pre-action: stop svc_mgr
+
+
+# - hosts: servers
+#   roles:
+#     - common
+#     - jenkins_server
+#     - trac_server
+#     - gitlab_server
