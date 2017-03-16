@@ -42,19 +42,20 @@ class AutoPatch:
                 print "\n*****************************************"
                 print "\n----------AUTO-PATCH-SCRIPT--------------"
                 print "\n*****************************************"
-                print "\nThis AutoPatch script is to create the formatted patch directory with required \nbinary.\n"
-                print "EXECUTION:\t AutoPatch -v [-p] [-a] \n\n"
+                print "\nThe AutoPatch script is to detect and produce the patch fix solutions\nwith required binary.\n"
+                print "EXECUTION:\t AutoPatch -v -b [-p] [-a] \n\n"
                 print ' -v \t Patch version   (example: -v8770.3.2.07.02)\n'
+                print ' -b \t Patch version   (example: -bPatch3.2pqa)\n'
                 print ' -p \t Patch name   (example: -pPATCH_320702B_JAR_V1)\n'
                 print ' -a \t Binary names   (example: -a"nms8770-client.jar, axis2.war")\n'
-                print "[ERROR]: Unknown argument ",cmd
+                if not each.count("-h") > 0:
+                    print "[ERROR]: Unknown argument ",cmd
 
         try:
             md1 = cmd.index("-v")
             md2 = cmd.index("-b")
         except:
-            print "\n[INFO]: -v -> Mandatory argument missing"
-            print "\n[INFO]: -b -> Mandatory argument missing"
+            print "\n[INFO]: (-v) (-b) - Mandatory"
             exit()
 
 

@@ -1,6 +1,7 @@
 import hglib
 import sys
 import re
+import xml.etree.ElementTree as ET
 
 class JpatchIncoming:
 
@@ -47,15 +48,31 @@ class JpatchIncoming:
     def filechanges(self,label):
         tagChange = JpatchIncoming.client.tags()
         tags,revno,chgset,st = zip(*tagChange)
-        for tag in tags:
-            if str(tag).startswith("BL"):
-                print tag
+        # for tag in tags:
+            # if str(tag).startswith("BL"):
+                # print tag
 
         modfile = JpatchIncoming.client.status(change=label)
         stat,modfile = zip(*modfile)
         return list(modfile)
 
+    def findArtifact(self, pomLoc):
+        tree = ET.parse(pomLoc)
+        root = tree.getroot()
+        i = 0
+        for each in root:
+            pom = str(root[i].tag)
+            if re.search(r'artifactID', pom, re.IGNORECASE):
+                artifactID = root[i].text
+            if re.search(r'version', pom, re.IGNORECASE):
+                version = root[i].text
+            if re.search(r'packaging', pom, re.IGNORECASE):
+                packaging = root[i].text
+            i += 1
+        return artifactID, version, packaging
+
 obj = JpatchIncoming()
-print obj.filechanges("BL_1.2.03.00")
+print obj.filechanges("CI_BUILD")
+print obj.findArtifact("D:\\Sandbox\\8770_java\\8770-appl\\tools\\pom.xml")
 
 
