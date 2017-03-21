@@ -49,25 +49,37 @@ class JpatchIncoming:
 # obj.updateForce()
 
     def filechanges(self):
+        target = []
+        mfile = []
+        print "---filechanges---"
         tagChange = JpatchIncoming.client.tags()
         tags,revno,chgset,st = zip(*tagChange)
         for tag in tags:
-            # print datetime.date.today()
             if str(tag).startswith("Patch") and str(tag).count(str(datetime.date.today())):
-                target = tag
-
-        modfile = JpatchIncoming.client.status(change=target)
-        stat,modfile = zip(*modfile)
-        return list(modfile)
+                target.append(tag)
+        for t in target:
+            modfile = JpatchIncoming.client.status(change=t,modified=True,added=True,removed=True,deleted=True)
+            stat,modfile = zip(*modfile)
+            # print "[INFO]: Fetching TAG :", t
+            for f in list(modfile):
+                mfile.append(f)
+                # print "[INFO]: Modified files:", f
+        print "[INFO]: Detected TAGS: ",target
+        print "[INFO]: Modified files: ",mfile
+        print "---filechanges---"
+        return mfile
 
     def findArtifact(self, mfiles):
         modfiles = []
+        # print "[INFO]: Modified files:", mfiles
         currentPath = os.path.abspath('..\\')
         modfiles = list(map(lambda x: currentPath + "\\" + x, mfiles))
         locatePOM = list(map(lambda x: x[0:str(x).index("src")], modfiles))
         pomLocation = list(map(lambda x: x + "pom.xml", locatePOM))
-        for each in pomLocation:
-            self.parsePom(each)
+        print "[INFO]: POM files:", pomLocation
+        return pomLocation
+        # for each in pomLocation:
+        #     self.parsePom(each)
 
         # if os.path.exists(locatePOM + "\\pom.xml"):
         #     tree = ET.parse(pomLoc)
@@ -86,32 +98,41 @@ class JpatchIncoming:
 
 
     def parsePom(self, pomLoc):
-        pomLoc = str(pomLoc).replace("\\","\\\\")
+        print "--Parsing--POM---"
+        artifact = ""
+        # pomLoc = str(pomLoc).replace("\\","\\\\")
         tree = ET.parse(pomLoc)
         root = tree.getroot()
         parentinfo = root.findall('{http://maven.apache.org/POM/4.0.0}parent')
-        # print len(parentinfo)
-
+        print "[INFO]: Processing POM:", pomLoc
         i = 0
         for each in root:
             pom = str(root[i].tag)
             if re.search(r'\bartifactID$', pom, re.IGNORECASE):
                 artifactID = root[i].text
-                print artifactID
+                # print "[INFO]: Current ArtifactID: " + artifactID
             if re.search(r'\bversion$', pom, re.IGNORECASE):
                 version = root[i].text
-                print version
+                # print "[INFO]: Current Version: " + version
             if re.search(r'\bpackaging$', pom, re.IGNORECASE):
                 packaging = root[i].text
-                print packaging
+                # print "[INFO]: Current packaging: " + packaging
             i += 1
-
-        if not os.path.exists(pomLoc.replace('pom.xml','target')):
-            print parentinfo
-            i = 0
-            for each in parentinfo:
-                pinfo = str(parentinfo[i].tag)
-                print pinfo
+        basedir = pomLoc.replace('pom.xml', 'target')
+        if not os.path.exists(basedir) or packaging == "pom" or packaging is None:
+            print "[WARN]: Packaging or Target dir not found. Redirecting to the parent pom information ........."
+            # pgroupID = parentinfo[0].find('{http://maven.apache.org/POM/4.0.0}groupId')
+            partifactID = parentinfo[0].find('{http://maven.apache.org/POM/4.0.0}artifactId')
+            # pversion = parentinfo[0].find('{http://maven.apache.org/POM/4.0.0}version')
+            # print "[INFO]: Parent groupID: {0} \n \t\t parent artifactID: {1} \n \t\t parent version: {2}".format(pgroupID.text, partifactID.text, pversion.text)
+            parentPom = pomLoc.partition(partifactID.text)[0] + partifactID.text
+            if os.path.exists(parentPom + "\\pom.xml"):
+                self.parsePom(parentPom + "\\pom.xml")
+        else:
+            artifact = basedir + "\\"+ artifactID + "-" + version + "." + packaging
+            print "--End-of-parsePom---"
+            print "[INFO]: RETURN: ",artifact
+        return "ok"
 
 
 
@@ -121,8 +142,11 @@ class JpatchIncoming:
 
 obj = JpatchIncoming()
 fileset = obj.filechanges()
-# print fileset
-obj.findArtifact(fileset)
+poms = obj.findArtifact(fileset)
+art = []
+for o in poms:
+    art.append(obj.parsePom(o))
+print art
 # print obj.findArtifact("D:\\Sandbox\\8770_java\\8770-appl\\tools\\pom.xml")
 
 
