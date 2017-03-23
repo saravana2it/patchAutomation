@@ -1,72 +1,88 @@
 import os
-
 import hglib
 import datetime
 import sys
 import re
 import xml.etree.ElementTree as ET
 
+
 class JpatchIncoming:
 
-    repo = '..\\'
-    if len(sys.argv) > 1:
-        repo = sys.argv[1]
-    client = hglib.open(repo)
+    def __init__(self, branch, repo="..\\"):
+        # if len(sys.argv) > 1:
+        #     repo = sys.argv[1]
+        self.client = hglib.open(repo)
+        self.branch = branch
 
     def updateForce (self):
-        pullList = JpatchIncoming.client.incoming(revrange="default")
+        pullList = self.client.incoming(revrange="tip", branch=self.branch)
         if len(pullList) > 0:
-            print "[INFO]: CURRENT CHANGESET \n {0}\n".format(JpatchIncoming.client.summary()['parent'])
+            print "[INFO]: CURRENT CHANGESET: {0}".format(self.client.summary()['parent'])
             print "[INFO]: Pulling latest from public repository..."
-            JpatchIncoming.client.pull(rev="default")
+            self.client.pull(rev="default")
             try:
-                JpatchIncoming.client.update(rev="default", check=True)
+                ptags = self.patchTags()
+                if len(ptags) == 0:
+                    print "[ERROR]: NO PATCH TAG FOUND"
+                    exit()
+                self.client.update(rev=ptags[0], check=True)
             except hglib.error.CommandError, a:
-                print "[WARN]: FOUND UNCOMMITED CHANGES : {0} \n".format(a)
+                print "[WARN]: FOUND UNCOMMITED CHANGES : {0}".format(a)
                 JpatchIncoming.revert()
-                JpatchIncoming.client.update(rev="default", check=True)
-                print "[INFO]: UPDATED TO LATEST \n {0}".format(JpatchIncoming.client.summary()['parent'])
+                self.client.update(rev=ptags[0], check=True)
+                print "[INFO]: UPDATED TO : {0}".format(self.client.summary()['parent'])
         else:
-            print "[INFO]: CURRENT CHANGESET \n {0}\n".format(JpatchIncoming.client.summary()['parent'])
+            ptags = self.patchTags()
+            if len(ptags) == 0:
+                print "[ERROR]: NO PATCH TAG FOUND"
+                exit()
+            print "[INFO]: CURRENT CHANGESET: {0}".format(self.client.summary()['parent'])
             try:
-                JpatchIncoming.client.update(rev="default", check=True)
+                self.client.update(rev=ptags[0], check=True)
+                print "[INFO]: UPDATED TO : {0}".format(self.client.summary()['parent'])
             except hglib.error.CommandError, a:
-                print "[WARN]: FOUND UNCOMMITED CHANGES : {0} \n".format(a)
+                print "[WARN]: FOUND UNCOMMITED CHANGES : {0}".format(a)
                 JpatchIncoming.revert(self)
-                JpatchIncoming.client.update(rev="default", check=True)
-                print "[INFO]: UPDATED TO LATEST \n {0}".format(JpatchIncoming.client.summary()['parent'])
+                self.client.update(rev=ptags[0], check=True)
+                print "[INFO]: UPDATED TO : {0}".format(self.client.summary()['parent'])
 
     def revert(self):
-        filestatus = JpatchIncoming.client.status(added=True, removed=True, deleted=True, modified=True)
-        print "[INFO]: Reverting the uncommited changes ...\n"
+        filestatus = self.client.status(added=True, removed=True, deleted=True, modified=True)
+        print "[INFO]: Reverting the uncommited changes ..."
         print filestatus
         status, files = zip(*filestatus)
         print "[INFO]: REVERTED FILES (check *.orig for backup)   \n {0} \n".format(filestatus)
-        JpatchIncoming.client.revert(files=list(files))
+        self.client.revert(files=list(files))
 
 
 # obj = Incoming()
 # obj.updateForce()
 
-    def filechanges(self,branch):
-        curtag = []
+    def patchTags(self):
+        ptag = []
+        tagChange = self.client.tags()
+        tags, revno, chgset, st = zip(*tagChange)
+        for tag in tags:
+            if str(tag).startswith("Patch") and \
+                    str(tag).count(str(datetime.date.today())) and len(self.client.log(branch=self.branch, revrange=tag)):
+                ptag.append(tag)
+        # for tag in ptag:
+        #     if len(self.client.log(branch=self.branch, revrange=tag)) <= 0:
+        #         ptag.remove(tag)
+        return ptag
+
+    def filechanges(self):
         mfile = []
         print "---filechanges---"
-        tagChange = JpatchIncoming.client.tags()
-        tags,revno,chgset,st = zip(*tagChange)
-        for tag in tags:
-            if str(tag).startswith("Patch") and str(tag).count(str(datetime.date.today())):
-                curtag.append(tag)
+        curtag = self.patchTags()
         for t in curtag:
-            if len(JpatchIncoming.client.log(branch=branch, revrange=t)):
-                modfile = JpatchIncoming.client.status(change=t,modified=True,added=True,removed=True,deleted=True)
-                stat,modfile = zip(*modfile)
-                # print "[INFO]: Fetching TAG :", t
-                for f in list(modfile):
-                    mfile.append(f)
+            modfile = self.client.status(change=t,modified=True,added=True,removed=True,deleted=True)
+            stat,modfile = zip(*modfile)
+            # print "[INFO]: Fetching TAG :", t
+            for f in list(modfile):
+                mfile.append(f)
                 # print "[INFO]: Modified files:", f
-            else:
-                curtag.remove(t)
+
         print "[INFO]: Detected TAGS: ",curtag
         print "[INFO]: Modified files: \n",mfile
         print "---filechanges---"
@@ -149,14 +165,15 @@ class JpatchIncoming:
         #     return artifactID, version, packaging
 
 
-obj = JpatchIncoming()
-fileset = obj.filechanges(branch="default")
+obj = JpatchIncoming(branch="default")
+obj.updateForce()
+fileset = obj.filechanges()
 jfiles = []
 for mf in fileset:
     if str(mf).endswith(".java") or str(mf).endswith(".xdct"):
         jfiles.append(mf)
     else:
-        print "Not a java file-->",mf
+        print "[WARN]: Non java file found: ",mf
 poms = obj.findPom(jfiles)
 art = []
 for o in poms:
