@@ -6,7 +6,7 @@ class JparseYML:
 
 
     def __init__(self):
-        with open("D:\Sandbox\8770_java\workspace_patch\PatchConfig.yml", 'r') as stream:
+        with open("PatchConfig.yml", 'r') as stream:
             try:
                 self.patchconfig = yaml.load(stream)
                 # print self.patchconfig
@@ -47,7 +47,7 @@ class JparseYML:
 #     for depitem in value:
 #         print depitem
 # else:
-#     print value
+# print value
 
 
 
