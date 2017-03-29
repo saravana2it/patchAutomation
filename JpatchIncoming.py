@@ -127,7 +127,7 @@ class JpatchIncoming:
                 artifact = builddir + "\\" + artifactID + "-" + version + "." + packaging
                 print "--End-of-parsePom---"
                 print "[INFO]: Artifact : ", artifact
-        return artifact
+        return artifactID
 
     def findVCproj(self, cfiles):
         vcFiles = []
@@ -159,6 +159,7 @@ class JpatchIncoming:
 
     def findCbinary(self, vcFileSet):
         binaryname = []
+        owd = os.getcwd()
         for vcF in vcFileSet:
             tree = ET.parse(vcF)
             root = tree.getroot()
@@ -172,8 +173,12 @@ class JpatchIncoming:
                         if tool[i].attrib["Name"] == "VCLinkerTool":
                             Toolname = tool[i].attrib["Name"]
                             cbin = tool[i].attrib["OutputFile"]
-                            binloc = os.path.abspath(cbin)
-                            print '[INFO]: Binary location: ', binloc
+                            try:
+                                os.chdir(str(vcF)[0:str(vcF).rindex("\\")])
+                                binloc = os.path.abspath(cbin)
+                                print '[INFO]: Binary location: ', binloc
+                            finally:
+                                os.chdir(owd)
                             binaryname.append(binloc)
         return binaryname
 

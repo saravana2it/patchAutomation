@@ -16,33 +16,69 @@ class JStruct:
         self.patchName = pname
 
     def copyBinary(self,release, binaryList):
+        jroot = os.path.abspath(".").rstrip('workspace_path')
+        patchLoc = self.parse.getJPatchLoc()
+        dest = ""
+        ls = ""
+        print "---Copy-binary----"
         for binary in binaryList:
-            jroot = os.path.abspath(".").rstrip('workspace_path')
-            fpatter = self.parse.getJfileformat(binary)
-            source = jroot + self.parse.getJsource(binary)
-            patchLoc = self.parse.getJPatchLoc()
-            folderStruc = self.parse.getJdeploy(binary)
-            folderStruc = str(folderStruc).replace("nmc_home", "[InstallDir]")
-            dest = patchLoc + self.nextPatch(release) + "\\" + folderStruc
+            source = ""
+            if str(binary).count("\\") > 0:
+                print "[INFO]: Processing binary with location {0} for copy".format(binary)
+                if str(binary).endswith(".exe") or str(binary).endswith(".dll"):
+                    if os.path.exists(binary):
+                        binname = binary[str(binary).rindex("\\") + 1:str(binary).rindex(".")]
+                        try:
+                            source = binary
+                            folderStruc = self.parse.getJdeploy(binname)
+                            folderStruc = str(folderStruc).replace("nmc_home", "[InstallDir]")
+                            dest = patchLoc + self.nextPatch(release) + "\\" + folderStruc
+                        except:
+                            print "[WARN]: The binary {0} is not mentioned on YML".format(binname)
+                            dest = patchLoc + self.nextPatch(release) + "\\" + "[InstallDir]\\bin"
+                            if not os.path.exists(dest):
+                                os.makedirs(dest)
+                            dest += source[source.rindex("\\"):len(source)]
+                            print "[INFO]: Setting default location: ", dest
+                            print "[INFO]: Source ----- " + source
+                            print "[INFO]: Target ----- " + dest
+                            shutil.copyfile(source, dest)
+                    else:
+                        raise "Binary not available"
+            else:
+                print "[INFO]: Processing binary {0} for copy".format(binary)
+                fpatter = self.parse.getJfileformat(binary)
+                source = jroot + self.parse.getJsource(binary)
+                folderStruc = self.parse.getJdeploy(binary)
+                folderStruc = str(folderStruc).replace("nmc_home", "[InstallDir]")
+                dest = patchLoc + self.nextPatch(release) + "\\" + folderStruc
             # + datetime.datetime.now().strftime("%d-%m-%Y-%H_%M")
             if not os.path.exists(dest):
                 os.makedirs(dest)
-            ls = os.listdir(source)
+            wholePath = re.search(r'\w*\.[a-z]{3}$',source)
+            if wholePath is None:
+                ls = os.listdir(source)
             for each in ls:
                 fileMatch = re.match(fpatter, each)
                 if fileMatch:
                     if len(fileMatch.groups()) > 2:
-                        print "[INFO]: Binary ----- " + binary + "-- Copied file version: " + fileMatch.group(2)
+                        print "[INFO]: Binary ----- " + binary + "-- file version: " + fileMatch.group(2)
                         source = source + "\\" + fileMatch.group()
                         if self.checkDate(source):
-                            shutil.copyfile(source, dest + fileMatch.group(1) + fileMatch.group(3))
+                            dest += fileMatch.group(1) + fileMatch.group(3)
+                            print "[INFO]: Source ----- " + source
+                            print "[INFO]: Target ----- " + dest
+                            shutil.copyfile(source, dest)
                         else:
                             raise "------Artifact creation date is older !! ------"
                     else:
                         print "[INFO]: Binary ----- " + binary + "-- Copied file : " + fileMatch.group()
                         source = source + "\\" + fileMatch.group()
                         if self.checkDate(source):
-                            shutil.copyfile(source, dest + fileMatch.group())
+                            dest += fileMatch.group()
+                            print "[INFO]: Source ----- " + source
+                            print "[INFO]: Target ----- " + dest
+                            shutil.copyfile(source, dest)
                         else:
                             raise "------Artifact creation date is older !! ------"
 
@@ -62,7 +98,7 @@ class JStruct:
     def nextPatch(self, release, pname=""):
         if len(self.patchName) > 0:
             pname = self.patchName
-        print "[INFO]: ---nextPatch---"
+        print "[INFO]: ---resolving-Patch-name---"
         patchLoc = self.parse.getJLaft()
         patchLoc += release + "\\PATCHES\\Mandatory\\"
         print "[INFO]: Next Patch name generation based on location", patchLoc

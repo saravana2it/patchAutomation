@@ -73,7 +73,7 @@ main.checkArg()
 # --------------------------------------
 # C++ repository patch processing
 # --------------------------------------
-cobj = JpatchIncoming(repo="..//..//8770_c", branch=main.branch)
+cobj = JpatchIncoming(repo="..//..//8770_c", branch="dev1.3")
 cobj.updateForce()
 cfileset = cobj.filechanges()
 cfiles = []
@@ -89,7 +89,7 @@ cbinary = cobj.findCbinary(set(vc))
 # ----------------------------------------
 # JAVA repository patch processing
 # ----------------------------------------
-jobj = JpatchIncoming(branch=main.branch)
+jobj = JpatchIncoming(branch="default")
 jobj.updateForce()
 jfileset = jobj.filechanges()
 jfiles = []
@@ -102,4 +102,14 @@ poms = jobj.findPom(jfiles)
 art = []
 for o in poms:
     art.append(jobj.parsePom(o))
+
+# ------------------------------------------------------
+# Patch structure
+# ------------------------------------------------------
+
+struct = JStruct(pname=main.pname)
+struct.copyBinary(main.version, cbinary)
+struct.copyBinary(main.version, art)
+# print obj.ftimestamp("D:\\Sandbox\\8770_java\\8770-appl\\common\\target\\axis2.war")
+# obj.nextPatch("8770.3.2.07.00.a", pname="Patch_320700M_JAR")
 
